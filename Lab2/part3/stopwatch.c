@@ -23,8 +23,8 @@ irq_handler_t timer0_irq_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 	// Countdown behaviour
 	*(timer0_ptr) = 0; // Clear timer interrupt
-	if (time == 0)
-		time = 360000;
+	if (time > 0)
+		time -= 1;
 
 	time -= 1;
 
@@ -39,6 +39,9 @@ irq_handler_t timer0_irq_handler(int irq, void *dev_id, struct pt_regs *regs)
 	hundreths = (time % 100);
 	*HEX3_HEX0_ptr |= seg7_pattern[hundreths / 10] << 8;
 	*HEX3_HEX0_ptr |= seg7_pattern[hundreths % 10];
+
+	if (time == 0)
+		*(timer0_ptr + 1) = 0x0008;
 
 	return (irq_handler_t) IRQ_HANDLED;
 } 
