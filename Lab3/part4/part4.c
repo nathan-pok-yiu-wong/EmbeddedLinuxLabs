@@ -84,14 +84,26 @@ int main(int argc, char *argv[]){
 
             SW_value = strtol(SW_buffer, NULL, 16);
             
-            total += SW_value;
+            if (SW_value == 0)
+            {
+                total = 0;
+                sprintf (LEDR_buffer, "%03X\n", SW_value);
+                write (LEDR_FD, LEDR_buffer, strlen(LEDR_buffer));
 
-            sprintf (LEDR_buffer, "%03X\n", SW_value);
-            write (LEDR_FD, LEDR_buffer, strlen(LEDR_buffer));
+                sprintf(HEX_buffer, "%d\n", total);
+                write (HEX_FD, HEX_buffer, strlen(HEX_buffer));
+            }
 
-            sprintf(HEX_buffer, "%d\n", total);
-            write (HEX_FD, HEX_buffer, strlen(HEX_buffer));
+            else
+            {
+                total += SW_value;
 
+                sprintf (LEDR_buffer, "%03X\n", SW_value);
+                write (LEDR_FD, LEDR_buffer, strlen(LEDR_buffer));
+
+                sprintf(HEX_buffer, "%d\n", total);
+                write (HEX_FD, HEX_buffer, strlen(HEX_buffer));
+            }
         }
 
         usleep (1000);
