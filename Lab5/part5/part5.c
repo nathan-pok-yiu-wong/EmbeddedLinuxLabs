@@ -114,7 +114,7 @@ int main(void)
         if (strtol(KEY_buff, NULL, 16) == 4)
         {
             sem_wait(&mutex);
-            num_vertices += num_vertices < MAX_VERT ? 1 : 0;    // Increase num_vert until max
+            num_vertices += num_vertices < (MAX_VERT - 1) ? 1 : 0;    // Increase num_vert until max
             sem_post(&mutex);
         }
         if (strtol(KEY_buff, NULL, 16) == 8)
