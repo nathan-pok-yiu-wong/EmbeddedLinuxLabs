@@ -47,11 +47,13 @@ int main(int argc, char *argv[])
 
     x1 = 20;
     x2 = screen_x - 20;
-    y1 = y2 = top;
+    y1 = y2 = top + 2; // + 2 to start in bounds
 
     while (running)
     {
         // Send command to write line
+        sprintf(command, "clear\n");
+        write (video_FD, command, strlen(command));
         sprintf(command, "line %d,%d %d,%d %X\n", x1, y1, x2, y2, GREEN);
         write (video_FD, command, strlen(command));
 
