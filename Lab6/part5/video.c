@@ -24,7 +24,7 @@ void plot_pixel(int, int, short int, int*);
 void wait_for_vsync(volatile int *);
 
 // Added for Part 4
-void draw_box(int, int, innt, int, short int);
+void draw_box(int, int, int, int, short int);
 
 // START of declarations needed for a character device
 static int video_open (struct inode *, struct file *);
@@ -229,7 +229,7 @@ void draw_box(int x0, int y0, int x1, int y1, short int color)
         x0 = x1;
         x1 = temp;
     }
-    
+
     if (y0 > y1)
     {
         temp = y0;
@@ -311,7 +311,7 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
         printk (KERN_ERR "       clear\n");
         printk (KERN_ERR "       pixel X,Y color\n");
         printk (KERN_ERR "       line X1,Y1 X2,Y2 color\n");
-        printk (KERN_ERR "       box X1,Y1 X2,Y2 color\n")
+        printk (KERN_ERR "       box X1,Y1 X2,Y2 color\n");
         printk (KERN_ERR "       sync\n");
         printk (KERN_ERR "Notes: X,Y are integers, color is 16-bit hex\n");
     }

@@ -9,7 +9,7 @@
 
 #include <stdlib.h>
 #include <time.h>
-/**  your part 3 user code here  **/
+/**  your part 6 user code here  **/
 volatile sig_atomic_t running = 1;
 
 #define video_BYTES 8   // number of characters to read from /dev/video
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     char video_buffer[video_BYTES];  // buffer for video char data
     char command[64];
     Box boxes[MAX_BOXES];
-    
+
     int KEY_read, SW_read, ret_val;
     char KEY_buff[KEY_SIZE], SW_buff[SW_SIZE];
 
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     int num_boxes = NUM_BOXES;
 
     int draw_lines = 1;
-    
+
     signal(SIGINT, catchSIGINT);
 
     // Generate a random seed
@@ -103,7 +103,8 @@ int main(int argc, char *argv[])
     flush_keys(KEY_FD);
 
     // Generate a random starting position and direction
-    for (int i = 0; i < num_boxes; i++)
+    int i;
+    for (i = 0; i < num_boxes; i++)
     {
         init_box(&boxes[i]);
     }
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
         else
             draw_lines = 0;
 
-        
+
         // Speed 1-12, we speed up fps
         int fps = (speed <= 12) ? 5 * speed : 60;
 
@@ -159,14 +160,14 @@ int main(int argc, char *argv[])
         struct timespec delay = { 0, 1000000000 / fps};
 
         // Moves boxes
-        for (int i = 0; i < num_boxes; i++)
+        for (i = 0; i < num_boxes; i++)
         {
-            // Step 
+            // Step
             boxes[i].x += boxes[i].dx * step;
             boxes[i].y += boxes[i].dy * step;
 
             // Edge detection
-            if (boxes[i].x <= 0) 
+            if (boxes[i].x <= 0)
             {
                 boxes[i].x = 0;
                 boxes[i].dx = 1;
@@ -177,16 +178,16 @@ int main(int argc, char *argv[])
                 boxes[i].y = 0;
                 boxes[i].dy = 1;
             }
-    
-            if (boxes[i].x >= (screen_x - BOX_SIZE)) 
+
+            if (boxes[i].x >= (screen_x - BOX_SIZE))
             {
-                boxes[i].x = (screen_x - BOX_SIZE); 
+                boxes[i].x = (screen_x - BOX_SIZE);
                 boxes[i].dx = -1;
             }
 
-            if (boxes[i].y >= (screen_y - BOX_SIZE)) 
+            if (boxes[i].y >= (screen_y - BOX_SIZE))
             {
-                boxes[i].y = (screen_y - BOX_SIZE); 
+                boxes[i].y = (screen_y - BOX_SIZE);
                 boxes[i].dy = -1;
             }
         }
@@ -198,7 +199,7 @@ int main(int argc, char *argv[])
         // Send command to draw lines between boxes
         if (draw_lines)
         {
-            for (int i = 0; i < num_boxes - 1; i++)
+            for (i = 0; i < num_boxes - 1; i++)
             {
                 sprintf(command, "line %d,%d %d,%d %X\n",
                     boxes[i].x + BOX_SIZE / 2,
@@ -211,7 +212,7 @@ int main(int argc, char *argv[])
         }
 
         // Send command to draw boxes
-        for (int i = 0; i < NUM_BOXES; i++)
+        for (i = 0; i < NUM_BOXES; i++)
         {
             sprintf(command, "box %d,%d %d,%d %X\n",
                 boxes[i].x,
@@ -221,7 +222,7 @@ int main(int argc, char *argv[])
                 boxes[i].color);
             write (video_FD, command, strlen(command));
         }
-        
+
         // vsync
         sprintf(command, "sync");
         write(video_FD, command, strlen(command));
