@@ -5,6 +5,7 @@
 #include <linux/uaccess.h> // for copy_to_user, see code
 #include <linux/string.h>
 #include <asm/io.h> // for mmap
+#include <string.h>
 #include "../include/address_map_arm.h"
 
 /**  your part 3 kernel code here  **/
@@ -17,7 +18,7 @@
  * the number of columns and rows on the screen, respectively. */
 
 /* Prototypes for functions used for video display */
-void get_screen_specs (volatile int *);
+void get_screen_specs (volatile int *, volatile int *);
 void clear_screen (int*);
 void draw_line(int, int, int, int, short int);
 void plot_pixel(int, int, short int, int*);
@@ -60,9 +61,12 @@ static int video_registered = 0;
 // START of declarations for the video
 void *LW_virtual;                 // used to map physical addresses for the light-weight bridge
 volatile int * pixel_ctrl_ptr;    // virtual address of pixel buffer DMA controller
+volatile int * char_ctrl_ptr;     // virtual address of char buffer DMA controller
 int onChip_buff;                  // current location of on chip buffer memory
-int SDRAM_buff;                   // current location of SDRAM buffer memeory
+int SDRAM_buff;                   // current location of SDRAM buffer memory
+int char_buff;                    // current location of char buffer memory
 int resolution_x, resolution_y;   // VGA screen size
+int char_res_x, char_res_y;       // character columns/rows
 int back_buff;                    // Current Location of Back Buffer.
 // END of declarations
 
@@ -92,7 +96,12 @@ static int __init start_video(void)
 
     // Create virtual memory access to the pixel buffer controller
     pixel_ctrl_ptr = (unsigned int *) (LW_virtual + PIXEL_BUF_CTRL_BASE);
-    get_screen_specs (pixel_ctrl_ptr);                // determine X, Y screen size
+
+    // Create virtual memory access to the char buffer controller
+    char_ctrl_ptr = (unsigned int *) (LW_virtual + CHAR_BUF_CTRL_BASE);
+
+    // determine X, Y screen size for pixel and chars
+    get_screen_specs (pixel_ctrl_ptr, char_ctrl_ptr);
 
     // Create virtual memory access to the on chip buffer
     onChip_buff = (int) ioremap_nocache (FPGA_ONCHIP_BASE, FPGA_ONCHIP_SPAN);
@@ -104,9 +113,17 @@ static int __init start_video(void)
     if (SDRAM_buff == 0)
         printk(KERN_ERR "/dev/%s: ioremap_nocache returned NULL\n", DEV_NAME);
 
+    // Create virtual memory access ot the Char buffer
+    char_buff = (int) ioremap_nocache (FPGA_CHAR_BASE, FPGA_CHAR_SPAN);
+    if (char_buff == 0)
+        printk(KERN_ERR "/dev/%s: ioremap_nocache returned NULL\n", DEV_NAME);
+
     /* Erase the pixel buffers */
     clear_screen(onChip_buff);
     clear_screen(SDRAM_buff);
+
+    // Erase the char buffer
+
 
     // Initialize Front and Back Buffers
     *(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE;  // make on-chip the front buffer
@@ -118,11 +135,16 @@ static int __init start_video(void)
 }
 
 /* Function to find the VGA screen specifications */
-void get_screen_specs(volatile int * pixel_ctrl_ptr)
+void get_screen_specs(volatile int * pixel_ctrl_ptr, volatile int * char_ctrl_ptr)
 {
     int resolution_reg;
+    int char_res_reg;
 
     resolution_reg = *(pixel_ctrl_ptr + 2);
+    char_res_reg = *(pixel_ctrl_ptr + 2);
+
+    char_res_x = char_res_reg & 0xFFFF;
+    char_res_y = char_res_reg >> 16;
     resolution_x = resolution_reg & 0xFFFF;
     resolution_y = resolution_reg >> 16;
 }
@@ -135,6 +157,15 @@ void clear_screen(int* buffer)
     for (x = 0; x < resolution_x; x++)
         for (y = 0; y < resolution_y; y++)
             plot_pixel (x, y, 0, buffer);
+}
+
+void clear_chars(int* buffer)
+{
+    int x, y;
+
+    for (x = 0; x < char_res_x; x++)
+        for (y = 0; y < char_res_y; y++)
+
 }
 
 void wait_for_vsync(volatile int * pixel_ctrl_ptr)
@@ -308,16 +339,22 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
     video_string[bytes] = '\0';
     if (video_string[0] == '-' && video_string[1] == '-')
     {
-        printk (KERN_ERR "       clear\n");
+        printk (KERN_ERR "       clear\n"); // clear screen (full)
+        printk (KERN_ERR "       erase\n"); // clear screen of all chars
         printk (KERN_ERR "       pixel X,Y color\n");
         printk (KERN_ERR "       line X1,Y1 X2,Y2 color\n");
         printk (KERN_ERR "       box X1,Y1 X2,Y2 color\n");
+        printk (KERN_ERR "       text X,Y string");
         printk (KERN_ERR "       sync\n");
         printk (KERN_ERR "Notes: X,Y are integers, color is 16-bit hex\n");
     }
     else if (strncmp(video_string, "clear", 5) == 0)
     {
         clear_screen ((int*) back_buff);
+    }
+    else if (strncmp(video_string, "erase", 5) == 0)
+    {
+
     }
     else if (strncmp(video_string, "pixel", 5) == 0)
     {
@@ -364,6 +401,10 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
         }
         else
             printk (KERN_ERR "/dev/%s: bad argument: %s\n", DEV_NAME, command);
+    }
+    else if (strcmp(video_string, "text", 4) == 0)
+    {
+
     }
     else if (strncmp(video_string, "sync", 4) == 0)
     {
