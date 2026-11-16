@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     char video_buffer[video_BYTES];  // buffer for video char data
     char command[64];
     Box boxes[NUM_BOXES];
-    
+
     // Generate a random seed
     srand(time(NULL));
 
@@ -57,7 +57,8 @@ int main(int argc, char *argv[])
 
     // Generate a random starting position and direction
 
-    for (int i = 0; i < NUM_BOXES; i++)
+    int i;
+    for (i = 0; i < NUM_BOXES; i++)
     {
         boxes[i].x = rand() % (screen_x - BOX_SIZE);
         boxes[i].y = rand() % (screen_y - BOX_SIZE);
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
         write(video_FD, command, strlen(command));
 
         // Send command to draw lines between boxes
-        for (int i = 0; i < NUM_BOXES - 1; i++)
+        for (i = 0; i < NUM_BOXES - 1; i++)
         {
             sprintf(command, "line %d,%d %d,%d %X\n",
                 boxes[i].x + BOX_SIZE / 2,
@@ -92,17 +93,8 @@ int main(int argc, char *argv[])
             write (video_FD, command, strlen(command));
         }
 
-        // TO CLOSE THE BOX
-        sprintf(command, "line %d,%d %d,%d %X\n",
-        boxes[0].x + BOX_SIZE / 2,
-        boxes[0].y + BOX_SIZE / 2,
-        boxes[NUM_BOXES - 1].x + BOX_SIZE / 2,
-        boxes[NUM_BOXES - 1].y + BOX_SIZE / 2,
-        boxes[NUM_BOXES - 1].color);
-        write (video_FD, command, strlen(command));
-
         // Send command to draw boxes
-        for (int i = 0; i < NUM_BOXES; i++)
+        for (i = 0; i < NUM_BOXES; i++)
         {
             sprintf(command, "box %d,%d %d,%d %X\n",
                 boxes[i].x,
@@ -111,16 +103,25 @@ int main(int argc, char *argv[])
                 boxes[i].y + BOX_SIZE - 1,
                 boxes[i].color);
             write (video_FD, command, strlen(command));
-        } 
+        }
+
+        // CLOSE THE BOX
+        sprintf(command, "line %d,%d %d,%d %X\n",
+            boxes[i].x + BOX_SIZE / 2,
+            boxes[i].y + BOX_SIZE / 2,
+            boxes[NUM_BOXES - 1].x + BOX_SIZE / 2, // From one box to another
+            boxes[NUM_BOXES - 1].y + BOX_SIZE / 2,
+            boxes[NUM_BOXES - 1].color);
+        write (video_FD, command, strlen(command));
 
         // Calculate next frame direction
-        for (int i = 0; i < NUM_BOXES; i++)
+        for (i = 0; i < NUM_BOXES; i++)
         {
             boxes[i].x += boxes[i].dx;
             boxes[i].y += boxes[i].dy;
 
             // Edge detection
-            if (boxes[i].x <= 0) 
+            if (boxes[i].x <= 0)
             {
                 boxes[i].x = 0;
                 boxes[i].dx = 1;
@@ -131,16 +132,16 @@ int main(int argc, char *argv[])
                 boxes[i].y = 0;
                 boxes[i].dy = 1;
             }
-    
-            if (boxes[i].x >= (screen_x - BOX_SIZE)) 
+
+            if (boxes[i].x >= (screen_x - BOX_SIZE))
             {
-                boxes[i].x = (screen_x - BOX_SIZE); 
+                boxes[i].x = (screen_x - BOX_SIZE);
                 boxes[i].dx = -1;
             }
 
-            if (boxes[i].y >= (screen_y - BOX_SIZE)) 
+            if (boxes[i].y >= (screen_y - BOX_SIZE))
             {
-                boxes[i].y = (screen_y - BOX_SIZE); 
+                boxes[i].y = (screen_y - BOX_SIZE);
                 boxes[i].dy = -1;
             }
         }
