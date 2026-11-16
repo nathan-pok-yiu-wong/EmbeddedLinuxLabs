@@ -205,13 +205,13 @@ int main(int argc, char *argv[])
                     boxes[i].y + BOX_SIZE / 2,
                     boxes[i+1].x + BOX_SIZE / 2, // From one box to another
                     boxes[i+1].y + BOX_SIZE / 2,
-                    GREEN);
+                    boxes[i].color);
                 write (video_FD, command, strlen(command));
             }
         }
 
         // Send command to draw boxes
-        for (int i = 0; i < NUM_BOXES; i++)
+        for (int i = 0; i < num_boxes; i++)
         {
             sprintf(command, "box %d,%d %d,%d %X\n",
                 boxes[i].x,
@@ -222,6 +222,16 @@ int main(int argc, char *argv[])
             write (video_FD, command, strlen(command));
         }
         
+        // TO CLOSE THE BOX
+        sprintf(command, "line %d,%d %d,%d %X\n",
+        boxes[0].x + BOX_SIZE / 2,
+        boxes[0].y + BOX_SIZE / 2,
+        boxes[num_boxes - 1].x + BOX_SIZE / 2,
+        boxes[num_boxes - 1].y + BOX_SIZE / 2,
+        boxes[num_boxes - 1].color);
+        write (video_FD, command, strlen(command));
+
+
         // vsync
         sprintf(command, "sync");
         write(video_FD, command, strlen(command));

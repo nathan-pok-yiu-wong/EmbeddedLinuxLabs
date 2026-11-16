@@ -21,7 +21,11 @@ typedef struct
 {
     int x, y;
     int dx, dy; // next one
+    int color;
 } Box;
+
+int palette[] = { 0xF800, 0xFFE0, 0x07FF, 0xF81F, 0xFFFF, 0xFD20, 0x001F };
+#define PALETTE_SIZE (int)(sizeof(palette) / sizeof(palette[0]))
 
 // Catch 'enter' to close program
 struct pollfd p_fd = { .fd = STDIN_FILENO, .events = POLLIN };
@@ -59,6 +63,7 @@ int main(int argc, char *argv[])
         boxes[i].y = rand() % (screen_y - BOX_SIZE);
         boxes[i].dx = rand() % 2 ? 1 : -1;
         boxes[i].dy = rand() % 2 ? 1 : -1;
+        boxes[i].color = palette[rand() % PALETTE_SIZE];
     }
 
     printf("Press 'enter' to stop");
@@ -83,9 +88,18 @@ int main(int argc, char *argv[])
                 boxes[i].y + BOX_SIZE / 2,
                 boxes[i+1].x + BOX_SIZE / 2, // From one box to another
                 boxes[i+1].y + BOX_SIZE / 2,
-                GREEN);
+                boxes[i].color);
             write (video_FD, command, strlen(command));
         }
+
+        // TO CLOSE THE BOX
+        sprintf(command, "line %d,%d %d,%d %X\n",
+        boxes[0].x + BOX_SIZE / 2,
+        boxes[0].y + BOX_SIZE / 2,
+        boxes[NUM_BOXES - 1].x + BOX_SIZE / 2,
+        boxes[NUM_BOXES - 1].y + BOX_SIZE / 2,
+        boxes[NUM_BOXES - 1].color);
+        write (video_FD, command, strlen(command));
 
         // Send command to draw boxes
         for (int i = 0; i < NUM_BOXES; i++)
@@ -95,7 +109,7 @@ int main(int argc, char *argv[])
                 boxes[i].y,
                 boxes[i].x + BOX_SIZE - 1, // Draw from one edge to other edge of box
                 boxes[i].y + BOX_SIZE - 1,
-                GREEN);
+                boxes[i].color);
             write (video_FD, command, strlen(command));
         } 
 
