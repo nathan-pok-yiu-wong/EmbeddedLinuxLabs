@@ -5,7 +5,6 @@
 #include <linux/uaccess.h> // for copy_to_user, see code
 #include <linux/string.h>
 #include <asm/io.h> // for mmap
-#include <string.h>
 #include "../include/address_map_arm.h"
 
 /**  your part 3 kernel code here  **/
@@ -20,8 +19,11 @@
 /* Prototypes for functions used for video display */
 void get_screen_specs (volatile int *, volatile int *);
 void clear_screen (int*);
+void clear_chars(int* buffer);
 void draw_line(int, int, int, int, short int);
+void print_string (int x, int y, char* buffer);
 void plot_pixel(int, int, short int, int*);
+void plot_char(int x, int y, char character, int* buffer);
 void wait_for_vsync(volatile int *);
 
 // Added for Part 4
@@ -46,7 +48,7 @@ static struct file_operations fops = {
 #define SUCCESS 0
 #define DEV_NAME "video"
 #define VIDEO_BYTES 8   // number of bytes to return when read (includes a \n)
-#define VIDEO_SIZE 25   // max number of bytes accepted for a write
+#define VIDEO_SIZE 64   // max number of bytes accepted for a write
 
 static struct miscdevice video_dev = {
     .minor = MISC_DYNAMIC_MINOR,
@@ -113,7 +115,7 @@ static int __init start_video(void)
     if (SDRAM_buff == 0)
         printk(KERN_ERR "/dev/%s: ioremap_nocache returned NULL\n", DEV_NAME);
 
-    // Create virtual memory access ot the Char buffer
+    // Create virtual memory access to the Char buffer
     char_buff = (int) ioremap_nocache (FPGA_CHAR_BASE, FPGA_CHAR_SPAN);
     if (char_buff == 0)
         printk(KERN_ERR "/dev/%s: ioremap_nocache returned NULL\n", DEV_NAME);
@@ -123,7 +125,7 @@ static int __init start_video(void)
     clear_screen(SDRAM_buff);
 
     // Erase the char buffer
-
+    clear_chars(char_buff);
 
     // Initialize Front and Back Buffers
     *(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE;  // make on-chip the front buffer
@@ -141,7 +143,7 @@ void get_screen_specs(volatile int * pixel_ctrl_ptr, volatile int * char_ctrl_pt
     int char_res_reg;
 
     resolution_reg = *(pixel_ctrl_ptr + 2);
-    char_res_reg = *(pixel_ctrl_ptr + 2);
+    char_res_reg = *(char_ctrl_ptr + 2);
 
     char_res_x = char_res_reg & 0xFFFF;
     char_res_y = char_res_reg >> 16;
@@ -159,13 +161,14 @@ void clear_screen(int* buffer)
             plot_pixel (x, y, 0, buffer);
 }
 
+// Fn to clear the char buffer
 void clear_chars(int* buffer)
 {
     int x, y;
 
     for (x = 0; x < char_res_x; x++)
         for (y = 0; y < char_res_y; y++)
-
+            plot_char (x, y, ' ', buffer);
 }
 
 void wait_for_vsync(volatile int * pixel_ctrl_ptr)
@@ -190,6 +193,11 @@ void wait_for_vsync(volatile int * pixel_ctrl_ptr)
 void plot_pixel(int x, int y, short int line_color, int* buffer)
 {
     *(short int *)((char*)buffer + (y << 10) + (x << 1)) = line_color;
+}
+
+void plot_char(int x, int y, char character, int* buffer)
+{
+    *(char*)((char*)buffer + (y << 7) + x) = character;
 }
 
 /* Bresenham's line drawing algorithm. */
@@ -277,6 +285,22 @@ void draw_box(int x0, int y0, int x1, int y1, short int color)
     }
 }
 
+// Takes an input string, expects it to have a null terminator at the end!!!!
+void print_string (int x, int y, char* buffer)
+{
+    int i;
+
+    for (i = 0; buffer[i] != '\0'; i++)
+    {
+        // Plot character
+        plot_char(x, y, buffer[i], (int*) char_buff);
+
+        // Increment x postion and check bounds
+        if (++x > char_res_x - 1)
+            return;
+    }
+}
+
 /* Remove the character device driver */
 static void __exit stop_video(void)
 {
@@ -284,6 +308,7 @@ static void __exit stop_video(void)
     iounmap (LW_virtual);
     iounmap ((void *) onChip_buff);
     iounmap ((void *) SDRAM_buff);
+    iounmap ((void *) char_buff);
 
     /* Remove the device from the kernel */
     if (video_registered) {
@@ -328,6 +353,8 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
     char video_string[VIDEO_SIZE + 1];  // extra byte is for a NULL terminator
     int bytes;
     char command[8];
+    char *str, *nl;
+    int n = 0;
     int x1, y1, x2, y2, color;
 
     bytes = length;
@@ -354,7 +381,7 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
     }
     else if (strncmp(video_string, "erase", 5) == 0)
     {
-
+        clear_chars((int*) char_buff);
     }
     else if (strncmp(video_string, "pixel", 5) == 0)
     {
@@ -402,9 +429,20 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
         else
             printk (KERN_ERR "/dev/%s: bad argument: %s\n", DEV_NAME, command);
     }
-    else if (strcmp(video_string, "text", 4) == 0)
+    else if (strncmp(video_string, "text", 4) == 0)
     {
-
+        if (sscanf(video_string, "%7s %d,%d %n", command, &x1, &y1, &n) != 3 || n == 0)
+            printk (KERN_ERR "/dev/%s: can't parse user input: %s", DEV_NAME, video_string);
+        else if ((x1 < 0) || (x1 > char_res_x - 1) || (y1 < 0) || (y1 > char_res_y - 1))
+            printk (KERN_ERR "/dev/%s: bad coordinates: %d,%d\n", DEV_NAME, x1, y1);
+        else
+        {
+            str = video_string + n;          // everything after "text X,Y "
+            nl = strchr(str, '\n');
+            if (nl)
+                *nl = '\0';                  // strip the trailing newline from echo
+            print_string(x1, y1, str);
+        }
     }
     else if (strncmp(video_string, "sync", 4) == 0)
     {
