@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
 
         // CLOSE THE BOX
         sprintf(command, "line %d,%d %d,%d %X\n",
-            boxes[i].x + BOX_SIZE / 2,
-            boxes[i].y + BOX_SIZE / 2,
+            boxes[0].x + BOX_SIZE / 2,
+            boxes[0].y + BOX_SIZE / 2,
             boxes[num_boxes - 1].x + BOX_SIZE / 2, // From one box to another
             boxes[num_boxes - 1].y + BOX_SIZE / 2,
             boxes[num_boxes - 1].color);
