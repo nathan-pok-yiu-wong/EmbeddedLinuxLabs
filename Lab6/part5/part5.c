@@ -243,6 +243,8 @@ int main(int argc, char *argv[])
 
     // clear
     sprintf(command, "clear");
+    write(video_FD, command, strlen(command));
+    
     // Send sync command
     sprintf(command, "sync");
     write(video_FD, command, strlen(command));

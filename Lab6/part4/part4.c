@@ -151,7 +151,13 @@ int main(int argc, char *argv[])
         write(video_FD, command, strlen(command));
     }
 
-    printf ("\nExiting sample solution program\n");
+    // clear
+    sprintf(command, "clear");
+    write(video_FD, command, strlen(command));
+    
+    // Send sync command
+    sprintf(command, "sync");
+    write(video_FD, command, strlen(command));
 
     close (video_FD);
     return 0;
