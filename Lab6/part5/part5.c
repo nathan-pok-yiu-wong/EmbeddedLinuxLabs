@@ -223,14 +223,17 @@ int main(int argc, char *argv[])
             write (video_FD, command, strlen(command));
         }
 
-        // CLOSE THE BOX
-        sprintf(command, "line %d,%d %d,%d %X\n",
-            boxes[0].x + BOX_SIZE / 2,
-            boxes[0].y + BOX_SIZE / 2,
-            boxes[num_boxes - 1].x + BOX_SIZE / 2, // From one box to another
-            boxes[num_boxes - 1].y + BOX_SIZE / 2,
-            boxes[num_boxes - 1].color);
-        write (video_FD, command, strlen(command));
+        // Close the Box
+        if (draw_lines)
+        {
+            sprintf(command, "line %d,%d %d,%d %X\n",
+                boxes[0].x + BOX_SIZE / 2,
+                boxes[0].y + BOX_SIZE / 2,
+                boxes[num_boxes - 1].x + BOX_SIZE / 2, // From one box to another
+                boxes[num_boxes - 1].y + BOX_SIZE / 2,
+                boxes[num_boxes - 1].color);
+            write (video_FD, command, strlen(command));
+        }
 
         // vsync
         sprintf(command, "sync");
