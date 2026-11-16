@@ -437,10 +437,12 @@ static ssize_t video_write(struct file *filp, const char *buffer, size_t length,
             printk (KERN_ERR "/dev/%s: bad coordinates: %d,%d\n", DEV_NAME, x1, y1);
         else
         {
-            str = video_string + n;          // everything after "text X,Y "
+            str = video_string + n;          // points at the separator after "text X,Y"
+            if (*str == ' ')
+                str++;                       // skip exactly one separator
             nl = strchr(str, '\n');
             if (nl)
-                *nl = '\0';                  // strip the trailing newline from echo
+                *nl = '\0';
             print_string(x1, y1, str);
         }
     }
