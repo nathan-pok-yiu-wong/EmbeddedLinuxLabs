@@ -17,13 +17,13 @@ int main(void)
 {
     uint8_t devid;
     int16_t XYZ[3];
-    time_t start_time, elapsed_time;    // time limited sample solution
+    time_t start_time, elapsed_time;
 
-    // catch SIGINT from ^C, instead of having it abruptly close this program
+    // Close program with ctrl+c
     signal(SIGINT, catchSIGINT);
     start_time = time (NULL);
 
-    // Set up virtual addresses for the I2C0 controller and System Manager (see ../ADXL345.c)
+    // Set up virtual addresses for the I2C0 controller and System Manager
     if (map_mem() < 0)
         return 1;
 
