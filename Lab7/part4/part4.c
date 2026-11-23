@@ -6,6 +6,7 @@
 #include <termios.h>
 #include "../include/accel_wrappers.h"
 
+#define TAP_HOLD_LOOPS 100          // 100 * 5 ms = 0.5 s
 #define COLS 80             // ASCII terminal size
 #define ROWS 24
 #define FULL_SCALE 1000.0   // mg of tilt that moves the bubble to the edge (1 g)
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
     int col = COLS / 2, row = ROWS / 2, old_col = col, old_row = row;
     struct termios raw;
     char ch;
+    int tap_hold = 0, last_tap = 0;
 
     signal(SIGINT, catchSIGINT);
     if (!accel_open()) return -1;
@@ -69,9 +71,15 @@ int main(int argc, char *argv[]) {
     status();
 
     while (!stop) {   // RHH
+        //printf("\ntest\n");
         if (!accel_read(&ready, &x, &y, &z, &mg)) break;
+        //printf("%d\n", ready);
         tap_detect = ready & 0x3; // Select HH -> RHH & 0b011
         ready = ready >> 2;       // Select R -> RHH >> 2
+        //printf("\033[1;1H\033[K R%1d HH = %2d", ready, tap_detect);
+        if (tap_detect) { last_tap = tap_detect; tap_hold = TAP_HOLD_LOOPS; }
+        else if (tap_hold > 0) tap_hold--;
+
         if (ready) {
             int ax = x * mg, ay = y * mg, az = z * mg;      // mg
 
@@ -86,7 +94,10 @@ int main(int argc, char *argv[]) {
             if (row < 2) row = 2;
             if (row > ROWS - 1) row = ROWS - 1;
 
-            printf("\033[1;1H\033[K HH = %2d  |  X = %5d  Y = %5d  Z = %5d  (mg)", tap_detect, ax, ay, az);
+            printf("\033[1;1H\033[K  %-11s | X = %5d  Y = %5d  Z = %5d  (mg)",
+                    tap_hold ? ((last_tap & 2) ? "DOUBLE TAP" : "SINGLE TAP") : "",
+                    ax, ay, az);
+
             if (col != old_col || row != old_row) {
                 put(old_row, old_col, ' ');
                 old_col = col; old_row = row;

@@ -12,7 +12,7 @@
 #include "../include/ADXL345.h"
 
 /* /dev/accel
- * READ : "R XXXX YYYY ZZZZ SS\n"
+ * READ : "RHH XXXX YYYY ZZZZ SS\n"
  * WRITE: text commands (sent by accel_wrappers.c or by echo)
  *      device          print the ADXL345 device ID with printk
  *      init            re-initialize the ADXL345            -> ADXL345_Init()
@@ -132,7 +132,7 @@ static void do_format (int F, int G) {
     val |= range | resolution;
     ADXL345_REG_WRITE (ADXL345_REG_DATA_FORMAT, val);
 
-    mg_per_lsb = calc_mg_per_lsb (resolution, range);   // from ADXL345.c | no??????? its not - Piotr
+    mg_per_lsb = calc_mg_per_lsb (resolution, range);   // from ADXL345.c
     printk (KERN_INFO "/dev/%s: format %s, +/-%d g, %d mg/LSB\n", DEV_NAME,
         F ? "full resolution" : "10-bit", G, mg_per_lsb);
 }

@@ -110,27 +110,27 @@ void Pinmux_Config() {
 void I2C0_Init() {
     // Abort any ongoing transmits and disable I2C0.
     *(I2C0_virtual + I2C0_ENABLE) = 2;
-    
+
     // Wait until I2C0 is disabled
     while (((*(I2C0_virtual + I2C0_ENABLE_STATUS)) & 0x1) == 1)
         ;
-    
-    // Configure the config reg with the desired setting (act as 
+
+    // Configure the config reg with the desired setting (act as
     // a master, use 7bit addressing, fast mode (400kb/s)).
     *(I2C0_virtual + I2C0_CON) = 0x65;
-    
+
     // Set target address (disable special commands, use 7bit addressing)
     *(I2C0_virtual + I2C0_TAR) = 0x53;
-    
+
     // Set SCL high/low counts (Assuming default 100MHZ clock input to I2C0 Controller).
     // The minimum SCL high period is 0.6us, and the minimum SCL low period is 1.3us,
     // However, the combined period must be 2.5us or greater, so add 0.3us to each.
     *(I2C0_virtual + I2C0_FS_SCL_HCNT) = 60 + 30;    // 0.6us + 0.3us
     *(I2C0_virtual + I2C0_FS_SCL_LCNT) = 130 + 30;    // 1.3us + 0.3us
-    
+
     // Enable the controller
     *(I2C0_virtual + I2C0_ENABLE) = 1;
-    
+
     // Wait until controller is enabled
     while (((*(I2C0_virtual + I2C0_ENABLE_STATUS)) & 0x1) == 0)
         ;
@@ -150,7 +150,7 @@ void ADXL345_REG_READ(uint8_t address, uint8_t *value) {
     *(I2C0_virtual + I2C0_DATA_CMD) = address + 0x400;
     // Send read signal
     *(I2C0_virtual + I2C0_DATA_CMD) = 0x100;
-    // Read the response (first wait until RX buffer contains data)  
+    // Read the response (first wait until RX buffer contains data)
     while (*(I2C0_virtual + I2C0_RXFLR) == 0)
         ;
     *value = *(I2C0_virtual + I2C0_DATA_CMD);
@@ -162,7 +162,7 @@ void ADXL345_REG_MULTI_READ(uint8_t address, uint8_t values[], uint8_t len) {
     int nth_byte = 0;
     // Send reg address (+0x400 to send START signal)
     *(I2C0_virtual + I2C0_DATA_CMD) = address + 0x400;
-    
+
     // Send read signal len times
     for (i = 0; i < len; i++)
         *(I2C0_virtual + I2C0_DATA_CMD) = 0x100;
@@ -187,14 +187,30 @@ void ADXL345_Init() {
     mg_per_lsb = ROUNDED_DIVISION(16 * 1000, 512);    // scale factor depends on range.
     // Output Data Rate: 12.5 Hz
     ADXL345_REG_WRITE (ADXL345_REG_BW_RATE, XL345_RATE_12_5);
-        
+
     // Set the offset registers
     ADXL345_REG_WRITE (ADXL345_REG_OFSX, 0);
     ADXL345_REG_WRITE (ADXL345_REG_OFSY, 0);
     ADXL345_REG_WRITE (ADXL345_REG_OFSZ, 0);
-    
+
+    // Init tap detection
+
+    // Tap threshhold - 3g                    (62.5mg/LSB)
+    ADXL345_REG_WRITE(ADXL345_REG_THRESH_TAP, 0b00110000);
+    // Max tap durration - 20ms               (625us/LSB)  - 0 disables single & double tap
+    ADXL345_REG_WRITE(ADXL345_REG_DURATION,   0b00100000);
+    // Tap latency - 20ms                     (1.25ms/LSB) - 0 disables double tap
+    ADXL345_REG_WRITE(ADXL345_REG_LATENCY,    0b00010000);
+    // Double tap window - 300ms              (1.25ms/LBS) - 0 disables double tap
+    ADXL345_REG_WRITE(ADXL345_REG_WINDOW,     0b11110000);
+    // Tap axes control   ( 7..4 - unused | 3 - Suppress | 2 X_EN | 1 - Y_EN | 0 Z_EN )
+    ADXL345_REG_WRITE(ADXL345_REG_TAP_AXES,   0b00000111);
+    // Enable
+    ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_SINGLETAP | XL345_DOUBLETAP);
+
     // start measure
     ADXL345_REG_WRITE (ADXL345_REG_POWER_CTL, XL345_MEASURE);
+
 }
 
 // Calibrate the ADXL345. The DE1-SoC should be placed on a flat
@@ -209,22 +225,22 @@ void ADXL345_Calibrate() {
     int8_t offset_z;
     uint8_t saved_bw;
     int i = 0, offset_scale;
-    
+
     // stop measure
     ADXL345_REG_WRITE (ADXL345_REG_POWER_CTL, XL345_STANDBY);
-    
+
     // Set the offset registers
     ADXL345_REG_WRITE (ADXL345_REG_OFSX, 0);
     ADXL345_REG_WRITE (ADXL345_REG_OFSY, 0);
     ADXL345_REG_WRITE (ADXL345_REG_OFSZ, 0);
-    
+
     // Use 100 hz rate for calibration. Save the current rate.
     ADXL345_REG_READ (ADXL345_REG_BW_RATE, &saved_bw);
     ADXL345_REG_WRITE (ADXL345_REG_BW_RATE, XL345_RATE_100);
-    
+
     // start measure
     ADXL345_REG_WRITE (ADXL345_REG_POWER_CTL, XL345_MEASURE);
-    
+
     // Get the average x,y,z accelerations over 64 samples (LSB 31.2 mG)
     while (i < 64) {
         if (ADXL345_IsDataReady()) {
@@ -238,7 +254,7 @@ void ADXL345_Calibrate() {
     average_x = ROUNDED_DIVISION(average_x, 64);
     average_y = ROUNDED_DIVISION(average_y, 64);
     average_z = ROUNDED_DIVISION(average_z, 64);
-    
+
     // Offset registers scale fixed at 15.6 mg/LSB; scale the offset values
     if (mg_per_lsb * 1000 > 15600) {
         offset_scale = ROUNDED_DIVISION(1000 * mg_per_lsb, 15600);
@@ -250,17 +266,17 @@ void ADXL345_Calibrate() {
         offset_scale = ROUNDED_DIVISION(15600, 1000 * mg_per_lsb);
         offset_x = 0 - ROUNDED_DIVISION(average_x, offset_scale);
         offset_y = 0 - ROUNDED_DIVISION(average_y, offset_scale);
-        offset_z = 0 - ROUNDED_DIVISION(average_z - ROUNDED_DIVISION(1000, mg_per_lsb), 
+        offset_z = 0 - ROUNDED_DIVISION(average_z - ROUNDED_DIVISION(1000, mg_per_lsb),
             offset_scale);
     }
-    
+
     // stop measure
     ADXL345_REG_WRITE (ADXL345_REG_POWER_CTL, XL345_STANDBY);
     // Set the offset registers
     ADXL345_REG_WRITE (ADXL345_REG_OFSX, offset_x);
     ADXL345_REG_WRITE (ADXL345_REG_OFSY, offset_y);
     ADXL345_REG_WRITE (ADXL345_REG_OFSZ, offset_z);
-    
+
     // Restore original bw rate
     ADXL345_REG_WRITE (ADXL345_REG_BW_RATE, saved_bw);
     // start measure
@@ -271,11 +287,11 @@ void ADXL345_Calibrate() {
 bool ADXL345_IsDataReady() {
     bool bReady = false;
     uint8_t data8;
-    
+
     ADXL345_REG_READ (ADXL345_REG_INT_SOURCE, &data8);
     if (data8 & XL345_DATAREADY)
         bReady = true;
-    
+
     return bReady;
 }
 
@@ -283,8 +299,8 @@ bool ADXL345_IsDataReady() {
 void ADXL345_XYZ_Read(int16_t szData16[3]) {
     uint8_t szData8[6];
     ADXL345_REG_MULTI_READ(0x32, (uint8_t *)&szData8, sizeof(szData8));
-    
-    szData16[0] = (szData8[1] << 8) | szData8[0]; 
+
+    szData16[0] = (szData8[1] << 8) | szData8[0];
     szData16[1] = (szData8[3] << 8) | szData8[2];
     szData16[2] = (szData8[5] << 8) | szData8[4];
 }

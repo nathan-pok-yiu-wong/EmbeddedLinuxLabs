@@ -7,13 +7,12 @@
 #include <linux/string.h>           // strcmp, strncmp
 #include <linux/errno.h>
 #include <asm/io.h>                 // for mmap
-#include <stdint.h>
 
 #include "../include/address_map_arm.h"
 #include "../include/ADXL345.h"
 
 /* /dev/accel
- * READ : "R XXXX YYYY ZZZZ SS\n"
+ * READ : "RHH XXXX YYYY ZZZZ SS\n"
  * WRITE: text commands (sent by accel_wrappers.c or by echo)
  *      device          print the ADXL345 device ID with printk
  *      init            re-initialize the ADXL345            -> ADXL345_Init()
@@ -155,25 +154,6 @@ static int __init start_accel(void) {
     Pinmux_Config ();
     I2C0_Init ();
     ADXL345_Init ();
-
-    // Init tap detection
-
-    // Tap threshhold - 3g                    (62.5mg/LSB)
-    ADXL345_REG_WRITE(ADXL345_REG_THRESH_TAP, 0b00110000);
-    // Max tap durration - 20ms               (625us/LSB) - 0 disables single & double tap
-    ADXL345_REG_WRITE(ADXL345_REG_DURATION,   0b00100000);
-    // Tap latency - 20ms                     (1.25ms/LSB) - 0 disables double tap
-    ADXL345_REG_WRITE(ADXL345_REG_LATENCY,    0b00010000);
-    // Double tap window - 300ms              (1.25ms/LBS) - 0 disables double tap
-    ADXL345_REG_WRITE(ADXL345_REG_WINDOW,     0b11110000);
-    // Tap axes control   ( 7..4 - unused | 3 - Suppress | 2 X_EN | 1 - Y_EN | 0 Z_EN )
-    ADXL345_REG_WRITE(ADXL345_REG_TAP_AXES,   0b00001001);
-
-    // Enable interrupts
-    ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_ACTIVITY | XL345_INACTIVITY | XL345_DOUBLETAP | XL345_SINGLETAP);
-
-
-
     return 0;
 }
 
@@ -199,14 +179,14 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
     size_t bytes;
     int NewData, i;
     int v[3];
-    uint8_t = HH;
+    uint8_t HH;
 
     bytes = ACCEL_BYTES - (*offset);
     if (bytes) {
-        ADXL345_REG_READ(ADXL, &data);
+        ADXL345_REG_READ(ADXL345_REG_INT_SOURCE, &data);
 
-        NewData = data & XL345_ACTIVITY;
-        HH = data & ( XL345_SINGLETAP | XL345_DOUBLETAP );
+        NewData = (data & XL345_DATAREADY) ? 1 : 0;
+        HH = ((data & XL345_SINGLETAP) ? 1 : 0) | ((data & XL345_DOUBLETAP) ? 2 : 0 );
 
         if (NewData)
             ADXL345_XYZ_Read (XYZ);
@@ -218,7 +198,7 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
             if (v[i] > 999) v[i] = 999;
             if (v[i] < -999) v[i] = -999;
         }                                      // RHH
-        snprintf(themessage, sizeof(themessage), "%3d %04d %04d %04d %02d\n",
+        snprintf(themessage, sizeof(themessage), "%1d %04d %04d %04d %02d\n",
             (NewData << 2) | HH, v[0], v[1], v[2], mg_per_lsb);
 
         if (copy_to_user (buffer, themessage, bytes) != 0)
