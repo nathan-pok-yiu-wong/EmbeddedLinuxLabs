@@ -75,5 +75,18 @@ Which part it is based on (3, 4 or 5):
 
 What I added:
 
+As spoken with you (Rohan), I kinda got carried away in making the main parts
+and so the "additional" part is baked into those implementations.
+
+What it is is not anything visual, but on the backend. What I did was
+implement multi-threading, seperating out the user input from the
+GUI/Animation. This is something that would be done for more complex programs
+where the User could be trying to do something while the program is doing
+something else, but both would be needed to be handled at the same time (ie its
+undesirable for a program to hang while processing something and not allowing
+the user to do anything else).
+
 How to use it (which KEYs and switches do what, what shows on the terminal):
 
+Nothing showes in the terminal, you'd have to look at the code to see the
+seperation and use of pthreads

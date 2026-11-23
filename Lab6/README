@@ -89,5 +89,11 @@ Which part it is based on (3, 4, 5 or 6):
 
 What I added:
 
+We created a simple text display/editor that would takes keyboard input and
+outputs on the screen, you can type, enter new lines, and delete characters.
+
 How to use it (which KEYs and switches do what, what shows on the VGA screen or terminal):
 
+once its open jsut start typing on you're keyboard (make sure you have the
+terminal window focused as we are reading inputs from the terminal and
+outputting that to the VGA)
