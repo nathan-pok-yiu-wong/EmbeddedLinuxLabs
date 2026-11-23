@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
         send_cmd(video_FD, "sync");
     }
 
-    send_cmd(video_FD, "erase");
+    //send_cmd(video_FD, "erase");
     send_cmd(video_FD, "clear");
     send_cmd(video_FD, "sync");
 

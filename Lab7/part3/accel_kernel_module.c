@@ -26,6 +26,11 @@ static int device_release (struct inode *, struct file *);
 static ssize_t device_read (struct file *, char *, size_t, loff_t *);
 static ssize_t device_write (struct file *, const char *, size_t, loff_t *);
 
+static void do_format (int F, int G);
+static void do_rate (const char *arg);
+static int parse_centi_hz (const char *s, int *out);
+
+
 #define SUCCESS 0
 #define DEV_NAME "accel"
 #define ACCEL_BYTES 20      // number of bytes to return when read (includes a \n)
@@ -127,7 +132,7 @@ static void do_format (int F, int G) {
     val |= range | resolution;
     ADXL345_REG_WRITE (ADXL345_REG_DATA_FORMAT, val);
 
-    mg_per_lsb = calc_mg_per_lsb (resolution, range);   // from ADXL345.c
+    mg_per_lsb = calc_mg_per_lsb (resolution, range);   // from ADXL345.c | no??????? its not - Piotr
     printk (KERN_INFO "/dev/%s: format %s, +/-%d g, %d mg/LSB\n", DEV_NAME,
         F ? "full resolution" : "10-bit", G, mg_per_lsb);
 }
