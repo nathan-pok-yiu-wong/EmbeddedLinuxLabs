@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
                 case 'f': full = !full; accel_format(full, ranges[range_i]); break;
                 case 'g': range_i = (range_i + 1) % 4; accel_format(full, ranges[range_i]); break;
                 case 'r': rate_i = (rate_i + 1) % NR; accel_rate(rate_hz[rate_i]); break;
-                case '+': if (alpha < 1) alpha += 0.05; break;
+                case '+': if (alpha < 0.95) alpha += 0.05; break;
                 case '-': if (alpha > 0.05) alpha -= 0.05; break;
                 case 'i': accel_init(); full = 0; range_i = 3; rate_i = 3; break;
                 case 'd': accel_device(); break;
